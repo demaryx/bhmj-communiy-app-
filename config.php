@@ -54,7 +54,8 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS members (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
 // Robust schema migration for updates
-function ensureColumn($mysqli, $table, $column, $definition) {
+function ensureColumn($mysqli, $table, $column, $definition)
+{
     $res = $mysqli->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
     if ($res->num_rows == 0) {
         $mysqli->query("ALTER TABLE `$table` ADD `$column` $definition");
@@ -62,11 +63,30 @@ function ensureColumn($mysqli, $table, $column, $definition) {
 }
 
 ensureColumn($mysqli, 'users', 'role', "VARCHAR(40) NOT NULL DEFAULT 'admin'");
-ensureColumn($mysqli, 'members', 'cnic', "VARCHAR(30) DEFAULT NULL");
 ensureColumn($mysqli, 'members', 'membership_number', "VARCHAR(100) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'father_name', "VARCHAR(180) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'grandfather_name', "VARCHAR(180) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'surname', "VARCHAR(120) DEFAULT NULL");
 ensureColumn($mysqli, 'members', 'native_place', "VARCHAR(180) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'cnic', "VARCHAR(30) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'residential_address', "VARCHAR(300) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'city_country', "VARCHAR(180) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'date_of_birth', "DATE DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'mobile_1', "VARCHAR(40) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'mobile_2', "VARCHAR(40) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'email', "VARCHAR(150) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'occupation', "VARCHAR(140) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'marital_status', "VARCHAR(80) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'father_or_brother_name', "VARCHAR(180) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'father_or_brother_membership_no', "VARCHAR(120) DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'membership_type', "VARCHAR(80) NOT NULL DEFAULT 'Standard'");
+ensureColumn($mysqli, 'members', 'amount', "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+ensureColumn($mysqli, 'members', 'join_date', "DATE DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'family_tree', "TEXT DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'family_details', "TEXT DEFAULT NULL");
+ensureColumn($mysqli, 'members', 'notes', "TEXT DEFAULT NULL");
 
-// Initialize default accounts
+// Initialize default amartialccounts
 $adminPass = '$2y$10$2TXuvD.MycAESPVUc9G/vOZRlkmJcemJxrxH/lZrZt7M1/NZprPOC'; // BHMJ2026!
 $mysqli->query("INSERT INTO users (name,email,password_hash,role) VALUES ('BHMJ Admin','admin@bhmj.com','$adminPass','admin') ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role);");
 

@@ -1,173 +1,195 @@
 <?php
 require_once 'includes/header.php';
 
-// Only admins can access dashboard stats
 if (($_SESSION['user_role'] ?? '') !== 'admin') {
     header('Location: members_list.php');
     exit;
 }
 
-$countStmt = $mysqli->prepare('SELECT COUNT(*) AS total FROM members');
-$countStmt->execute();
-$totalMembers = $countStmt->get_result()->fetch_assoc()['total'] ?? 0;
+$totalMembers = $mysqli->query("SELECT COUNT(*) as total FROM members")->fetch_assoc()['total'] ?? 0;
 
-$recentStmt = $mysqli->prepare('SELECT full_name, mobile_1, cnic, membership_number, join_date FROM members ORDER BY id DESC LIMIT 10');
-$recentStmt->execute();
-$recentMembers = $recentStmt->get_result();
+// Growth Data (Last 6 Months)
+$growthLabels = [];
+$growthValues = [];
+for ($i = 5; $i >= 0; $i--) {
+    $month = date('Y-m', strtotime("-$i months"));
+    $label = date('M Y', strtotime("-$i months"));
+    $count = $mysqli->query("SELECT COUNT(*) as count FROM members WHERE join_date LIKE '$month%'")->fetch_assoc()['count'] ?? 0;
+    $growthLabels[] = $label;
+    $growthValues[] = (int)$count;
+}
+
+// Membership Type Distribution
+$typeLabels = [];
+$typeValues = [];
+$typeResult = $mysqli->query("SELECT marital_status, COUNT(*) as count FROM members GROUP BY marital_status");
+while ($row = $typeResult->fetch_assoc()) {
+    $typeLabels[] = $row['marital_status'] ?: 'Unknown';
+    $typeValues[] = (int)$row['count'];
+}
+
+// Recent Members
+$recentMembers = $mysqli->query("SELECT full_name, cnic, membership_number, join_date FROM members ORDER BY id DESC LIMIT 6");
 ?>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div style="margin-bottom: 40px;">
+    <h1 style="font-size: 2.4rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px;">Executive Dashboard</h1>
+    <p style="color: var(--text-muted); font-size: 1.05rem;">Real-time overview of BHMJ membership and organization status.</p>
+</div>
 
-<div class="page-header">
-    <div class="page-title">
-        <h1>BHMJ Portal Overview</h1>
-        <p>Real-time membership statistics and member directory.</p>
+<!-- Stat Cards -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px;">
+    <div style="background:#fff; padding:28px; border-radius:20px; border:1px solid var(--border); display:flex; align-items:center; gap:20px;">
+        <div style="width:55px; height:55px; background:var(--primary-light); border-radius:15px; display:grid; place-items:center; font-size:1.6rem;">👥</div>
+        <div>
+            <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Total Members</div>
+            <div style="font-size:2.4rem; font-weight:800; line-height:1.1;"><?= number_format($totalMembers) ?></div>
+            <div style="font-size:0.8rem; color:var(--success); font-weight:700;">Active Registry</div>
+        </div>
     </div>
-    <div class="page-actions">
-        <a href="membership.php" class="btn-form" style="text-decoration:none; display:inline-block; margin-top:0; border-radius: 10px; background: var(--primary); color: #fff; padding: 12px 24px; font-weight: 600;">+ New Registration</a>
+    <div style="background:#fff; padding:28px; border-radius:20px; border:1px solid var(--border); display:flex; align-items:center; gap:20px;">
+        <div style="width:55px; height:55px; background:#f0fdf4; border-radius:15px; display:grid; place-items:center; font-size:1.6rem;">🔒</div>
+        <div>
+            <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">System Status</div>
+            <div style="font-size:2.4rem; font-weight:800; line-height:1.1; color:var(--success);">Online</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Encrypted & Secure</div>
+        </div>
+    </div>
+    <div style="background:#fff; padding:28px; border-radius:20px; border:1px solid var(--border); display:flex; align-items:center; gap:20px;">
+        <div style="width:55px; height:55px; background:#fef2f2; border-radius:15px; display:grid; place-items:center; font-size:1.6rem;">🔔</div>
+        <div>
+            <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Alerts</div>
+            <div style="font-size:2.4rem; font-weight:800; line-height:1.1; color:var(--danger);"><?= $notificationCount ?></div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Require Attention</div>
+        </div>
     </div>
 </div>
 
-<section class="stats-grid">
-    <div class="stat-card">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div>
-                <h3>Total Members</h3>
-                <div class="value"><?= number_format($totalMembers) ?></div>
-            </div>
-            <span style="font-size: 1.5rem;">👥</span>
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: 60% 40%; gap: 24px; margin-bottom: 32px; min-width: 0;">
+    <!-- Growth Chart -->
+    <div style="background:#fff; padding:30px; border-radius:20px; border:1px solid var(--border); min-width:0; overflow:hidden;">
+        <div style="font-size:1rem; font-weight:800; margin-bottom:25px; color:var(--text);">📈 Membership Growth — Last 6 Months</div>
+        <div style="position:relative; height:260px; width:100%;">
+            <canvas id="growthChart"></canvas>
         </div>
-        <p style="margin:12px 0 0; font-size:0.85rem; color: #10b981; font-weight: 600;">↑ 12% increase</p>
     </div>
-    <div class="stat-card">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div>
-                <h3>System Status</h3>
-                <div class="value">Secure</div>
-            </div>
-            <span style="font-size: 1.5rem;">🛡️</span>
+    <!-- Donut Chart -->
+    <div style="background:#fff; padding:30px; border-radius:20px; border:1px solid var(--border); display:flex; flex-direction:column; min-width:0; overflow:hidden;">
+        <div style="font-size:1rem; font-weight:800; margin-bottom:20px; color:var(--text);">🍩 Marital Distribution</div>
+        <div style="position:relative; height:220px; width:100%;">
+            <canvas id="donutChart"></canvas>
         </div>
-        <p style="margin:12px 0 0; font-size:0.85rem; color: var(--text-muted);">Last scan: 2 mins ago</p>
-    </div>
-    <div class="stat-card">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div>
-                <h3>Portal Speed</h3>
-                <div class="value">Fast</div>
-            </div>
-            <span style="font-size: 1.5rem;">⚡</span>
-        </div>
-        <p style="margin:12px 0 0; font-size:0.85rem; color: var(--text-muted);">99.9% uptime achieved</p>
-    </div>
-</section>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px;" class="dashboard-charts">
-    <div class="card" style="padding: 24px;">
-        <h3 style="margin: 0 0 20px; font-size: 1.1rem; font-weight: 700;">Membership Growth</h3>
-        <canvas id="growthChart" height="200"></canvas>
-    </div>
-    <div class="card" style="padding: 24px;">
-        <h3 style="margin: 0 0 20px; font-size: 1.1rem; font-weight: 700;">Membership Types</h3>
-        <canvas id="typeChart" height="200"></canvas>
     </div>
 </div>
 
-<section class="card" style="padding: 32px; overflow: hidden;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h2 style="margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em;">Member Directory</h2>
-        <a href="#" style="font-size: 0.9rem; color: var(--primary); text-decoration: none; font-weight: 600;">View All Records →</a>
+<!-- Recent Members Table -->
+<div style="background:#fff; padding:30px; border-radius:20px; border:1px solid var(--border);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+        <div style="font-size:1rem; font-weight:800;">🕒 Recently Registered Members</div>
+        <a href="members_list.php" class="btn-primary" style="font-size:0.85rem; padding:10px 20px;">View All →</a>
     </div>
-    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-        <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse;">
             <thead>
-                <tr style="text-align: left; border-bottom: 2px solid var(--border);">
-                    <th style="padding: 16px 12px; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Member Name</th>
-                    <th style="padding: 16px 12px; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">CNIC No.</th>
-                    <th style="padding: 16px 12px; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Relation</th>
-                    <th style="padding: 16px 12px; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Join Date</th>
-                    <th style="padding: 16px 12px; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Action</th>
+                <tr style="background:#f8fafc; border-radius:10px;">
+                    <th style="padding:14px 20px; text-align:left; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Member</th>
+                    <th style="padding:14px 20px; text-align:left; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">CNIC</th>
+                    <th style="padding:14px 20px; text-align:left; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Membership ID</th>
+                    <th style="padding:14px 20px; text-align:left; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Joined</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if ($recentMembers->num_rows === 0): ?>
-                    <tr><td colspan="5" style="text-align:center; padding:60px; color:var(--text-muted);">No members registered yet.</td></tr>
-                <?php else: ?>
-                    <?php while ($row = $recentMembers->fetch_assoc()): ?>
-                        <tr style="border-bottom: 1px solid #f9fafb; transition: background 0.2s;" onmouseover="this.style.background='#fcfcfc'" onmouseout="this.style.background='transparent'">
-                            <td style="padding: 16px 12px;">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div style="width: 36px; height: 36px; background: #eef2ff; border-radius: 10px; display: grid; place-items: center; font-weight: 700; color: var(--primary); font-size: 0.85rem;"><?= substr($row['full_name'], 0, 1) ?></div>
-                                    <div>
-                                        <div style="font-weight: 600;"><?= htmlspecialchars($row['full_name']) ?></div>
-                                        <div style="font-size: 0.75rem; color: var(--text-muted);">ID: <?= htmlspecialchars($row['membership_number'] ?: 'N/A') ?></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td style="padding: 16px 12px; color: var(--text-muted); font-family: monospace; font-size: 0.9rem;"><?= htmlspecialchars($row['cnic'] ?: 'N/A') ?></td>
-                            <td style="padding: 16px 12px;"><span style="background: #f1f5f9; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #475569; border: 1px solid #e2e8f0;">Member</span></td>
-                            <td style="padding: 16px 12px; font-size: 0.9rem;"><?= date('M d, Y', strtotime($row['join_date'])) ?></td>
-                            <td style="padding: 16px 12px;">
-                                <a href="family_search.php?query=<?= $row['cnic'] ?>" style="text-decoration:none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem;" title="View Profile">👁️</a>
-                            </td>
-                        </tr>
-                    <?php endwhile; ?>
-                <?php endif; ?>
+                <?php while ($m = $recentMembers->fetch_assoc()): ?>
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:16px 20px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:36px; height:36px; background:var(--primary-light); color:var(--primary); border-radius:10px; display:grid; place-items:center; font-weight:800;"><?= strtoupper(substr($m['full_name'], 0, 1)) ?></div>
+                            <span style="font-weight:700;"><?= htmlspecialchars($m['full_name']) ?></span>
+                        </div>
+                    </td>
+                    <td style="padding:16px 20px; color:var(--text-muted);"><?= htmlspecialchars($m['cnic']) ?></td>
+                    <td style="padding:16px 20px;"><span style="background:var(--primary-light); color:var(--primary); padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:700;"><?= htmlspecialchars($m['membership_number'] ?: 'N/A') ?></span></td>
+                    <td style="padding:16px 20px; color:var(--text-muted); font-size:0.9rem;"><?= date('d M Y', strtotime($m['join_date'])) ?></td>
+                </tr>
+                <?php endwhile; ?>
             </tbody>
         </table>
     </div>
-</section>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // Membership Growth Chart
-    const growthCtx = document.getElementById('growthChart').getContext('2d');
-    new Chart(growthCtx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'New Members',
-                data: [12, 19, 3, 5, 2, 10], // Mock data
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3
-            }]
+// Growth Line Chart
+const growthCtx = document.getElementById('growthChart').getContext('2d');
+new Chart(growthCtx, {
+    type: 'bar',
+    data: {
+        labels: <?= json_encode($growthLabels) ?>,
+        datasets: [{
+            label: 'New Members',
+            data: <?= json_encode($growthValues) ?>,
+            backgroundColor: 'rgba(37, 99, 235, 0.85)',
+            borderRadius: 10,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#0f172a',
+                titleFont: { family: 'Outfit', size: 13 },
+                bodyFont: { family: 'Outfit', size: 13 },
+                padding: 12,
+                cornerRadius: 10
+            }
         },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, display: false }, x: { grid: { display: false } } }
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#f1f5f9' },
+                ticks: { font: { family: 'Outfit', size: 12 }, color: '#94a3b8', stepSize: 1 }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { family: 'Outfit', size: 12 }, color: '#94a3b8' }
+            }
         }
-    });
-
-    // Membership Type Chart
-    const typeCtx = document.getElementById('typeChart').getContext('2d');
-    new Chart(typeCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Active', 'Pending', 'Archived'],
-            datasets: [{
-                data: [70, 20, 10],
-                backgroundColor: ['#2563eb', '#10b981', '#f59e0b'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
-            cutout: '70%'
-        }
-    });
-</script>
-
-<style>
-    @media (max-width: 992px) {
-        .dashboard-charts { grid-template-columns: 1fr !important; }
-        .page-header { flex-direction: column; align-items: flex-start; gap: 20px; }
-        .page-actions { width: 100%; }
-        .page-actions a { width: 100%; text-align: center; }
     }
-</style>
+});
+
+// Donut Chart
+const donutCtx = document.getElementById('donutChart').getContext('2d');
+new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+        labels: <?= json_encode($typeLabels ?: ['No Data']) ?>,
+        datasets: [{
+            data: <?= json_encode($typeValues ?: [1]) ?>,
+            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444'],
+            borderWidth: 0,
+            hoverOffset: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Outfit', size: 12 }, padding: 15, usePointStyle: true } },
+            tooltip: {
+                backgroundColor: '#0f172a',
+                titleFont: { family: 'Outfit' },
+                bodyFont: { family: 'Outfit' },
+                padding: 12,
+                cornerRadius: 10
+            }
+        },
+        cutout: '70%'
+    }
+});
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

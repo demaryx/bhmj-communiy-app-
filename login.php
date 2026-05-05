@@ -151,22 +151,19 @@ $token = csrfToken();
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($token) ?>">
             <div class="form-group">
                 <label>Email Address</label>
-                <input type="email" name="email" value="admin@bhmj.com" required placeholder="admin@bhmj.com">
+                <input type="email" name="email" required placeholder="Enter your email" autocomplete="off">
             </div>
             <div class="form-group" style="margin-bottom: 24px;">
                 <label>Password</label>
-                <input type="password" name="password" value="BHMJ2026!" required placeholder="••••••••">
+                <input type="password" name="password" required placeholder="Enter your password" autocomplete="off">
             </div>
             <button type="submit" class="btn-submit">Sign In</button>
         </form>
         
-        <div class="demo-box">
-            <strong>Administrator Access:</strong><br>
-            Email: admin@bhmj.com | Pass: BHMJ2026!
-        </div>
         
         <div class="copyright">
-            &copy; 2026 BHMJ Membership System
+            &copy; 2026 BHMJ Membership System<br>
+            <span style="color: var(--primary); font-weight: 700;">Designed &amp; Developed by DEMARYX</span>
         </div>
     </div>
 </body>
