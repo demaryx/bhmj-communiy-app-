@@ -1,0 +1,27 @@
+﻿CREATE DATABASE IF NOT EXISTS bhmj_membership CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE bhmj_membership;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(40) NOT NULL DEFAULT 'admin',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS members (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  full_name VARCHAR(180) NOT NULL,
+  phone VARCHAR(40) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  membership_type VARCHAR(80) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  join_date DATE NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO users (name, email, password_hash, role) VALUES
+('BHMJ Admin', 'admin@bhmj.com', '$2y$10$2TXuvD.MycAESPVUc9G/vOZRlkmJcemJxrxH/lZrZt7M1/NZprPOC', 'admin')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
