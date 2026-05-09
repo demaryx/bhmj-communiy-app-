@@ -32,7 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ft = [];
         if (isset($_POST['ft_name'])) {
             foreach ($_POST['ft_name'] as $i => $n) {
-                if ($n) $ft[] = ['name' => $n, 'relation' => $_POST['ft_rel'][$i], 'cnic' => $_POST['ft_cnic'][$i], 'status' => $_POST['ft_status'][$i]];
+                if ($n) $ft[] = [
+                    'name'     => $n,
+                    'relation' => $_POST['ft_rel'][$i],
+                    'cnic'     => $_POST['ft_cnic'][$i],
+                    'dob'      => $_POST['ft_dob'][$i] ?? '',
+                    'status'   => $_POST['ft_status'][$i]
+                ];
             }
         }
 
@@ -144,11 +150,12 @@ $token = csrfToken();
 <script>
 function addFT() {
     const div = document.createElement('div');
-    div.style = "display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; padding: 20px; background: #fff; border-radius: 15px; border: 1px solid var(--border);";
+    div.style = "display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 20px; padding: 20px; background: #fff; border-radius: 15px; border: 1px solid var(--border);";
     div.innerHTML = `
         <div class="form-group" style="margin:0"><label>Name</label><input type="text" name="ft_name[]" placeholder="Name"></div>
         <div class="form-group" style="margin:0"><label>Relation</label><input type="text" name="ft_rel[]" placeholder="Spouse/Son/Daughter"></div>
-        <div class="form-group" style="margin:0"><label>CNIC</label><input type="text" name="ft_cnic[]" placeholder="CNIC"></div>
+        <div class="form-group" style="margin:0"><label>CNIC</label><input type="text" name="ft_cnic[]" placeholder="xxxxx-xxxxxxx-x"></div>
+        <div class="form-group" style="margin:0"><label>Date of Birth</label><input type="date" name="ft_dob[]"></div>
         <div class="form-group" style="margin:0"><label>Status</label><select name="ft_status[]"><option value="Alive">Alive</option><option value="Deceased">Deceased</option></select></div>
     `;
     document.getElementById('ft-rows').appendChild(div);

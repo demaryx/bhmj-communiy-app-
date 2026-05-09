@@ -5,16 +5,30 @@ ini_set('session.cookie_httponly', '1');
 ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');
 
-$host = 'localhost';
-$dbName = 'bhmj_membership';
-$dbUser = 'root';
-$dbPass = '';
+// ─── DATABASE SETTINGS (cPanel setup) ───────────────────────────────────────
+// cPanel mein 'MySQL Databases' se banaye gaye user/pass yahan likhein:
+$host   = 'localhost';
+$dbName = 'bhmj_membership'; // Maslan: 'bombayha_bhmj'
+$dbUser = 'root';            // Maslan: 'bombayha_user'
+$dbPass = '';                // Aap ka database password
+// ────────────────────────────────────────────────────────────────────────────
 
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-$mysqli = new mysqli($host, $dbUser, $dbPass);
-$mysqli->set_charset('utf8mb4');
-$mysqli->query("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-$mysqli->select_db($dbName);
+// Live server par STRICT mode HTTP 500 errors deta hai agar query fail ho.
+// Is liye ise OFF rakhna behtar hai taake hum manual checks kar sakein.
+mysqli_report(MYSQLI_REPORT_OFF);
+
+try {
+    $mysqli = new mysqli($host, $dbUser, $dbPass);
+    if ($mysqli->connect_errno) {
+        throw new Exception("Connection failed: " . $mysqli->connect_error);
+    }
+    $mysqli->set_charset('utf8mb4');
+    $mysqli->query("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $mysqli->select_db($dbName);
+} catch (Exception $e) {
+    error_log($e->getMessage());
+    die('<div style="font-family:sans-serif;padding:50px;text-align:center;"><h2>System Maintenance</h2><p>Database connection issue. Please check your credentials in config.php.</p></div>');
+}
 
 $mysqli->query("CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
